@@ -13,9 +13,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.views.generic import RedirectView
 from django.contrib import admin
 from django.urls import path
 
+from django.urls import include
+
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("api/", include('api.urls'))
+]
+
+# Add URL maps to redirect the base URL to our application
+urlpatterns += [
+    path('', RedirectView.as_view(url='/api/', permanent=True)),
 ]
