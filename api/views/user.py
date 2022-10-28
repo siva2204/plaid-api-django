@@ -21,7 +21,6 @@ class LoginView(View):
         password = request.POST["password"]
 
         user = authenticate(username=username, password=password)
-        print(user)
 
         if user is None:
             response["status_code"] = 401
