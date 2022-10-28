@@ -1,8 +1,8 @@
-import json
 from sqlite3 import Cursor
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from api.models import Account, Item, Transactions
 from ..plaid_client import plaid_client as client
+from ..logger import log
 
 
 def get_transactions_updates(item_id, initial_update_complete):
@@ -53,7 +53,7 @@ def get_transactions_updates(item_id, initial_update_complete):
 
         has_more = response["has_more"]
         cursor = response["next_cursor"]
-
+    log.info(f"transaction_sync data fetched for {item_id}")
     return added, modified, removed, item.access_token, cursor
 
 
@@ -68,17 +68,17 @@ def update_transactions(item_id, initial_update_complete):
     cursor = response[4]
 
     already_added_tn = _create_transactions(added)
-    print("successful tn creation")
+    log.debug("successful tn creation")
 
     modified.extend(already_added_tn)
     _delete_transactions(removed)
-    print("successful tn deletion")
+    log.debug("successful tn deletion")
 
     _update_transactions(modified)
-    print("successful tn updation")
+    log.debug("successful tn updation")
 
     _update_cursor(access_token=access_token, cursor=cursor)
-    print("cursor updated")
+    log.debug("cursor updated")
 
 
 def _update_cursor(access_token, cursor):

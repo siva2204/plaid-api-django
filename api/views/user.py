@@ -4,6 +4,7 @@ from django.contrib.auth import logout, authenticate, login
 from api.util.response import internalservererror_response, unauthorized_response
 from ..util.user import validate_email
 from django.contrib.auth.models import User
+from ..logger import log
 
 
 class LoginView(View):
@@ -28,6 +29,7 @@ class LoginView(View):
             return JsonResponse(response, status=401)
 
         login(request, user)
+        log.debug(f"user with {username} successfully loggedin")
         response["message"] = "successfully loggedIn!"
         return JsonResponse(response)
 
@@ -56,27 +58,27 @@ class SignUpView(View):
             response["message"] = "password strength is low"
             response["status_code"] = 400
             return JsonResponse(response, status=400)
-
-        if User.objects.filter(email=email).exists():
-            response["message"] = "email already resgistered, please login"
-            response["status_code"] = 409
-            return JsonResponse(response, status=409)
-
-        if User.objects.filter(username=username).exists():
-            response["message"] = "user name already used"
-            response["status_code"] = 409
-            return JsonResponse(response, status=409)
-
-        newuser = User.objects.create(
-            username=username, email=email)
-
-        newuser.set_password(password)
-
         try:
+            if User.objects.filter(email=email).exists():
+                response["message"] = "email already resgistered, please login"
+                response["status_code"] = 409
+                return JsonResponse(response, status=409)
+
+            if User.objects.filter(username=username).exists():
+                response["message"] = "user name already used"
+                response["status_code"] = 409
+                return JsonResponse(response, status=409)
+
+            newuser = User.objects.create(
+                username=username, email=email)
+
+            newuser.set_password(password)
+
             newuser.save()
             response["message"] = "registration successful, please login"
             return JsonResponse(response)
-        except:
+        except Exception as e:
+            log.error(f"Error occured while signing up {username}", e)
             return JsonResponse(internalservererror_response(), status=500)
 
 

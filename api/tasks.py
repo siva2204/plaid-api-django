@@ -7,12 +7,12 @@ from api.models import Account, Item
 from .plaid_client import plaid_client as client
 from plaid.model import accounts_get_request
 import plaid
+from logger import log
 
 
 @shared_task
-def get_accounts(access_token):
-    # fetch accounts associated with item
-    # saving it in the database
+def update_accounts(access_token):
+    """save and updates accounts accordingly"""
     try:
         request = accounts_get_request.AccountsGetRequest(
             access_token=access_token)
@@ -23,6 +23,22 @@ def get_accounts(access_token):
         # item can't be None here, so skipping the check here :))
 
         for account in accounts:
+
+            saved_account = Account.objects.get(
+                account_id=account["account_id"])
+
+            if saved_account != None:
+                # account is already present in db
+                saved_account.name = account["name"]
+                saved_account.official_name = account["official_name"]
+                saved_account.subtype = account["subtype"]
+                saved_account.type = account["type"]
+                saved_account.available_balance = account["balances"]["available"]
+                saved_account.current_balance = account["balances"]["current"]
+
+                saved_account.save()
+                continue
+
             new_account = Account(access_token=item,
                                   account_id=account["account_id"],
                                   name=account["name"], official_name=account["official_name"],
@@ -34,10 +50,10 @@ def get_accounts(access_token):
 
     except plaid.ApiException as e:
         responseBody = json.loads(e.body)
-        print("get_accounts failed: ",
-              responseBody["error_message"], " ", responseBody["error_code"])
+        log.error(
+            f"get_accounts task failed {responseBody['error_message']} ", e)
     except Exception as e:
-        print("get_accounts failed to save data in database: ", e)
+        log.error(f"get_accounts task failed to save data in database: ", e)
 
 
 @shared_task
@@ -48,7 +64,7 @@ def sync_transactions(item_id, initial_update_complete=True):
             item_id=item_id, initial_update_complete=initial_update_complete)
     except plaid.ApiException as e:
         responseBody = json.loads(e.body)
-        print("sync_transactions failed for {item_id}: ",
-              responseBody["error_message"], " ", responseBody["error_code"])
+        log.error(
+            f"sync_transactions task failed for {item_id} - {responseBody['error_message']}", e)
     except Exception as e:
-        print("sync_transaction failed to save data in database: ", e)
+        log.error("sync_transaction task failed to save data in database: ", e)

@@ -1,9 +1,10 @@
 import json
+from ..logger import log
 from django.http import HttpRequest, HttpResponse, JsonResponse, response
 from django.views import View
 import plaid
 
-from api.tasks import get_accounts, sync_transactions
+from api.tasks import update_accounts, sync_transactions
 from ..plaid_client import plaid_client
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from ..models import Account, Item, Transactions
@@ -47,14 +48,17 @@ class AccessTokenView(View):
 
             # async jobs to celery
             # get items accounts
-            get_accounts.delay(access_token)
+            update_accounts.delay(access_token)
 
             response["message"] = "successfully fetched access_token"
             return JsonResponse(response, status=200)
         except plaid.ApiException as e:
+            # TODO plaid Error handling
             responseBody = json.loads(e.body)
             response["message"] = responseBody["error_message"]
             response["status_code"] = e.status
+            log.error(
+                f"error occured while fetching access_token for {public_token}", e)
             return JsonResponse(response, status=e.status)
         except Exception as e:
             print(e)
@@ -120,7 +124,8 @@ class TransactionsView(View):
             return JsonResponse(response, status=200)
 
         except Exception as e:
-            print(e)
+            log.error(
+                f"error occured while fetching accounts and tsransaction for {request.user.username}", e)
             response["message"] = "internal server error"
             response["status_code"] = 500
             return JsonResponse(response, status=500)
