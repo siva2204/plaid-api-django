@@ -1,5 +1,5 @@
 import json
-from django.http import HttpRequest, JsonResponse, response
+from django.http import HttpRequest, HttpResponse, JsonResponse, response
 from django.views import View
 import plaid
 
@@ -63,11 +63,40 @@ class AccessTokenView(View):
 
 class TransactionsView(View):
     def post(self, request: HttpRequest):
+        # fetch users accounts and associated transactions
         pass
 
 
 class WebHookView(View):
     # in this app, this webhooks only handles the transaction updates webhooks
     def post(self, request: HttpRequest):
-        print(response)
-        return HttpRequest("have a good day")
+        body_unicode = request.body.decode('utf-8')
+        body = json.loads(body_unicode)
+
+        item_id = body["item_id"]
+        webhook_code = body["webhook_code"]
+        webhook_type = body["webhook_type"]
+        new_transactions = body["new_transactions"]
+
+        print("webhook fired", item_id,
+              webhook_code, webhook_type, new_transactions)
+
+        if webhook_type is not "TRANSACTIONS":
+            return HttpResponse("Have a good day")
+
+        if webhook_code == "SYNC_UPDATES_AVAILABLE":
+            # this hook will be fired if there are any changes in transaction of an item or all the transactions after item creation
+            
+            pass
+        elif webhook_code == "RECURRING_TRANSACTIONS_UPDATE":
+            pass
+        elif webhook_code == "INITIAL_UPDATE":
+            pass
+        elif webhook_code == "HISTORICAL_UPDATE":
+            pass
+        elif webhook_code == "DEFAULT_UPDATE":
+            pass
+        elif webhook_code == "TRANSACTIONS_REMOVED":
+            pass
+
+        return HttpResponse("Have a another good day")

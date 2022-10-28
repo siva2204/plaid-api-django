@@ -26,7 +26,10 @@ def get_accounts(access_token):
             new_account = Account(access_token=item,
                                   account_id=account["account_id"],
                                   name=account["name"], official_name=account["official_name"],
-                                  subtype=account["subtype"], type=account["type"])
+                                  subtype=account["subtype"], type=account["type"],
+                                  # TODO test these two fileds
+                                  available_balance=account["available_balance"], current_balance=account["current_balance"]
+                                  )
             new_account.save()
 
     except plaid.ApiException as e:
@@ -35,3 +38,9 @@ def get_accounts(access_token):
               responseBody["error_message"], " ", responseBody["error_code"])
     except Exception as e:
         print("get_accounts failed to save data in database: ", e)
+
+
+@shared_task
+def sync_transactions(item_id):
+    # add new transaction, update updated transaction & delete deleted transactions
+    pass
