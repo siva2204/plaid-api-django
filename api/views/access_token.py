@@ -1,5 +1,4 @@
 import json
-from os import access
 from django.http import HttpRequest, HttpResponse, JsonResponse, response
 from django.views import View
 import plaid
@@ -67,7 +66,7 @@ class TransactionsView(View):
         # fetch users accounts and associated transactions
         response = {
             "status_code": 200,
-            "message": ""
+            "message": "",
         }
 
         if not request.user.is_authenticated:
@@ -78,25 +77,51 @@ class TransactionsView(View):
         try:
             items = Item.objects.filter(user=request.user)
             accounts = []
-            response["data"] = []
+            data = []
 
             for item in items:
-                accounts.extend(Account.objects.filter(
-                    access_token=item.access_token))
+                account = Account.objects.filter(
+                    access_token=item.access_token)
+                accounts.extend(list(account))
 
             for account in accounts:
-                transaction = Transactions.objects.filter(account_id=account)
+                transactions = list(
+                    Transactions.objects.all().filter(account_id=account))
                 result = {
-                    "account": account,
-                    "transaction": transaction
+                    "account": {
+                        "id": account.id,
+                        "name": account.name,
+                        "official_name": account.official_name,
+                        "current_balance": account.current_balance,
+                        "subtype": account.subtype,
+                        "type": account.type
+                    }
                 }
-                response["data"].extend(result)
+
+                t_result = []
+
+                for t in transactions:
+                    t_result.append({
+                        "id": t.id,
+                        "account_id": t.account_id.id,
+                        "amount": t.amount,
+                        "category_id": t.category_id,
+                        "category": t.category,
+                        "pending": t.pending,
+                        "account_owner": t.account_owner
+                    })
+
+                result["transactions"] = t_result
+
+                data.append(result)
+            response["message"] = "successfully fetched data"
+            response["data"] = data
 
             return JsonResponse(response, status=200)
 
         except Exception as e:
-            del response["data"]
-            response["message"] = e
+            print(e)
+            response["message"] = "internal server error"
             response["status_code"] = 500
             return JsonResponse(response, status=500)
 
@@ -110,12 +135,11 @@ class WebHookView(View):
         item_id = body["item_id"]
         webhook_code = body["webhook_code"]
         webhook_type = body["webhook_type"]
-        new_transactions = body["new_transactions"]
 
         print("webhook fired", item_id,
-              webhook_code, webhook_type, new_transactions)
+              webhook_code, webhook_type)
 
-        if webhook_type is not "TRANSACTIONS":
+        if webhook_type != "TRANSACTIONS":
             return HttpResponse("Have a good day")
 
         if webhook_code == "SYNC_UPDATES_AVAILABLE":
@@ -131,7 +155,8 @@ class WebHookView(View):
         elif webhook_code == "HISTORICAL_UPDATE":
             pass
         elif webhook_code == "DEFAULT_UPDATE":
-            pass
+            # used for testing, this hook code is fired of initially
+            sync_transactions.delay(item_id, False)
         elif webhook_code == "TRANSACTIONS_REMOVED":
             pass
 

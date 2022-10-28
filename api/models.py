@@ -1,6 +1,3 @@
-from asyncio.windows_events import NULL
-from pickle import TRUE
-from unicodedata import category
 from django.db import models
 from django.contrib.auth.models import User
 import uuid
@@ -15,7 +12,7 @@ class Item(models.Model):
         max_length=255, primary_key=True)  # primary key
     item_id = models.CharField(max_length=255, unique=True)
     last_transaction_update = models.CharField(
-        max_length=255, default=NULL, null=True)
+        max_length=255, null=True)
 
 
 class Account(models.Model):
@@ -25,7 +22,7 @@ class Account(models.Model):
         "Item", on_delete=models.CASCADE, null=False)
     account_id = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255, null=True)
-    official_name = models.CharField(max_length=255, null=TRUE)
+    official_name = models.CharField(max_length=255, null=True)
     current_balance = models.FloatField(null=True)
     available_balance = models.FloatField(null=True)
     subtype = models.CharField(max_length=255, null=True)

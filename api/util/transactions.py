@@ -1,31 +1,50 @@
-from ast import While
-from asyncio.windows_events import NULL
-from os import access
-from unicodedata import category
-from pyparsing import null_debug_action
+import json
+from sqlite3 import Cursor
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from api.models import Account, Item, Transactions
 from ..plaid_client import plaid_client as client
 
 
 def get_transactions_updates(item_id, initial_update_complete):
-    cursor = NULL
-    item = Item.objects.get(item_id=item_id)
-
-    if not initial_update_complete:  # if initial transaction pull is done, last cursor is updated to fetch new transactions
-        cursor = item.last_transaction_update
-
     added = []
     modified = []
     removed = []
 
     has_more = True  # for pagination logic
+    cursor = None
+    item = Item.objects.get(item_id=item_id)
 
-    while has_more:
+    if initial_update_complete:  # if initial transaction pull is done, last cursor is updated to fetch new transactions
+        cursor = item.last_transaction_update
+
+    request = None
+
+    if cursor is None:
         request = TransactionsSyncRequest(
-            access_token=item.access_token
+            access_token=item.access_token,
         )
 
+    if cursor != None:
+        request = TransactionsSyncRequest(
+            access_token=item.access_token,
+            cursor=cursor
+        )
+
+    response = client.transactions_sync(request)
+
+    added.extend(response["added"])
+    modified.extend(response["modified"])
+    removed.extend(response["removed"])
+
+    has_more = response["has_more"]
+    cursor = response["next_cursor"]
+
+    while has_more:
+
+        request = TransactionsSyncRequest(
+            access_token=item.access_token,
+            cursor=cursor
+        )
         response = client.transactions_sync(request)
 
         added.extend(response["added"])
@@ -33,7 +52,6 @@ def get_transactions_updates(item_id, initial_update_complete):
         removed.extend(response["removed"])
 
         has_more = response["has_more"]
-
         cursor = response["next_cursor"]
 
     return added, modified, removed, item.access_token, cursor
@@ -49,19 +67,36 @@ def update_transactions(item_id, initial_update_complete):
     access_token = response[3]
     cursor = response[4]
 
-    _create_transactions(added)
+    already_added_tn = _create_transactions(added)
+    print("successful tn creation")
+
+    modified.extend(already_added_tn)
     _delete_transactions(removed)
+    print("successful tn deletion")
+
     _update_transactions(modified)
-    _update_cursor(access_token=access, cursor=cursor)
+    print("successful tn updation")
+
+    _update_cursor(access_token=access_token, cursor=cursor)
+    print("cursor updated")
 
 
 def _update_cursor(access_token, cursor):
     item = Item.objects.get(access_token=access_token)
     item.last_transaction_update = cursor
+    item.save()
 
 
 def _create_transactions(transactions):
+    modified = []  # To avoid duplicate entry in sandbox mode
     for transaction in transactions:
+        """In sandbox mode some transaction_id are repeating or i.e duplicated row is there"""
+        """if the transaction_id is already present we can move that to modified list"""
+
+        if Transactions.objects.filter(transaction_id=transaction["transaction_id"]).exists():
+            modified.append(transaction)
+            continue
+
         account = Account.objects.get(account_id=transaction["account_id"])
         new_transactions = Transactions(
             account_id=account,
@@ -74,6 +109,7 @@ def _create_transactions(transactions):
         )
 
         new_transactions.save()
+    return modified
 
 
 def _delete_transactions(transactions):
@@ -84,30 +120,14 @@ def _delete_transactions(transactions):
 
 def _update_transactions(transactions):
     for transaction in transactions:
-        account = Account.objects.get(account_id=transaction["account_id"])
 
         old_transaction = Transactions.objects.get(
             transaction_id=transaction["transaction_id"])
 
-        if old_transaction is not None:
-            old_transaction["amount"] = transaction["amount"]
-            old_transaction["category_id"] = transaction["category_id"]
-            old_transaction["category"] = ",".join(transaction["category"])
-            old_transaction["pending"] = transaction["pending"]
-            old_transaction = transaction["account_owner"]
+        old_transaction.amount = transaction["amount"]
+        old_transaction.category_id = transaction["category_id"]
+        old_transaction.category = ",".join(transaction["category"])
+        old_transaction.pending = transaction["pending"]
+        old_transaction.account_owner = transaction["account_owner"]
 
-            old_transaction.save()
-        else:
-            # This wont happen but still tho
-            account = Account.objects.get(account_id=transaction["account_id"])
-            new_transactions = Transactions(
-                account_id=account,
-                transaction_id=transaction["transaction_id"],
-                amount=transaction["amount"],
-                category_id=transaction["category_id"],
-                category=",".join(transaction["category"]),
-                pending=transaction["pending"],
-                account_owner=transaction["account_owner"],
-            )
-
-            new_transactions.save()
+        old_transaction.save()

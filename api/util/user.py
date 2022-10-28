@@ -1,4 +1,3 @@
-import email
 from xml.dom import ValidationErr
 from django.core.validators import validate_email as _validate_email
 

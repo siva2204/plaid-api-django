@@ -27,8 +27,8 @@ def get_accounts(access_token):
                                   account_id=account["account_id"],
                                   name=account["name"], official_name=account["official_name"],
                                   subtype=account["subtype"], type=account["type"],
-                                  # TODO test these two fileds
-                                  available_balance=account["available_balance"], current_balance=account["current_balance"]
+                                  available_balance=account["balances"][
+                                      "available"], current_balance=account["balances"]["current"]
                                   )
             new_account.save()
 
