@@ -13,7 +13,7 @@ class Item(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
     access_token = models.CharField(
         max_length=255, primary_key=True)  # primary key
-    item_id = models.CharField(max_length=255)
+    item_id = models.CharField(max_length=255, unique=True)
     last_transaction_update = models.CharField(
         max_length=255, default=NULL, null=True)
 
@@ -23,7 +23,7 @@ class Account(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     access_token = models.ForeignKey(
         "Item", on_delete=models.CASCADE, null=False)
-    account_id = models.CharField(max_length=255)
+    account_id = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255, null=True)
     official_name = models.CharField(max_length=255, null=TRUE)
     current_balance = models.FloatField(null=True)
@@ -32,7 +32,7 @@ class Account(models.Model):
     type = models.CharField(max_length=255, null=True)
 
 
-class Transactions(models):
+class Transactions(models.Model):
     """Transactions Holds all the transactions details associated with an *Item*"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     account_id = models.ForeignKey(

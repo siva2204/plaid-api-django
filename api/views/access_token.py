@@ -1,12 +1,13 @@
 import json
+from os import access
 from django.http import HttpRequest, HttpResponse, JsonResponse, response
 from django.views import View
 import plaid
 
-from api.tasks import get_accounts
+from api.tasks import get_accounts, sync_transactions
 from ..plaid_client import plaid_client
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
-from ..models import Item
+from ..models import Account, Item, Transactions
 from ..util.response import internalservererror_response
 
 
@@ -64,7 +65,40 @@ class AccessTokenView(View):
 class TransactionsView(View):
     def post(self, request: HttpRequest):
         # fetch users accounts and associated transactions
-        pass
+        response = {
+            "status_code": 200,
+            "message": ""
+        }
+
+        if not request.user.is_authenticated:
+            response["message"] = "user not authenticated"
+            response["status_code"] = 401
+            return JsonResponse(response, status=401)
+
+        try:
+            items = Item.objects.filter(user=request.user)
+            accounts = []
+            response["data"] = []
+
+            for item in items:
+                accounts.extend(Account.objects.filter(
+                    access_token=item.access_token))
+
+            for account in accounts:
+                transaction = Transactions.objects.filter(account_id=account)
+                result = {
+                    "account": account,
+                    "transaction": transaction
+                }
+                response["data"].extend(result)
+
+            return JsonResponse(response, status=200)
+
+        except Exception as e:
+            del response["data"]
+            response["message"] = e
+            response["status_code"] = 500
+            return JsonResponse(response, status=500)
 
 
 class WebHookView(View):
@@ -86,7 +120,9 @@ class WebHookView(View):
 
         if webhook_code == "SYNC_UPDATES_AVAILABLE":
             # this hook will be fired if there are any changes in transaction of an item or all the transactions after item creation
-            
+            # this hook is enough to update the transaction in real-time
+            initial_update_complete = body["initial_update_complete"]
+            sync_transactions.delay(item_id, initial_update_complete)
             pass
         elif webhook_code == "RECURRING_TRANSACTIONS_UPDATE":
             pass

@@ -2,7 +2,7 @@
 import json
 from pydoc import plain
 from celery import shared_task
-
+from .util import transactions
 from api.models import Account, Item
 from .plaid_client import plaid_client as client
 from plaid.model import accounts_get_request
@@ -41,6 +41,14 @@ def get_accounts(access_token):
 
 
 @shared_task
-def sync_transactions(item_id):
-    # add new transaction, update updated transaction & delete deleted transactions
-    pass
+def sync_transactions(item_id, initial_update_complete=True):
+    try:
+        # add new transaction, update updated transaction & delete deleted transactions
+        transactions.update_transactions(
+            item_id=item_id, initial_update_complete=initial_update_complete)
+    except plaid.ApiException as e:
+        responseBody = json.loads(e.body)
+        print("sync_transactions failed for {item_id}: ",
+              responseBody["error_message"], " ", responseBody["error_code"])
+    except Exception as e:
+        print("sync_transaction failed to save data in database: ", e)
