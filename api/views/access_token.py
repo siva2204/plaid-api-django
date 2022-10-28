@@ -2,8 +2,12 @@ import json
 from django.http import HttpRequest, JsonResponse, response
 from django.views import View
 import plaid
+
+from api.tasks import get_accounts
 from ..plaid_client import plaid_client
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from ..models import Item
+from ..util.response import internalservererror_response
 
 
 class AccessTokenView(View):
@@ -12,7 +16,7 @@ class AccessTokenView(View):
 
         response = {
             "status_code": 200,
-            "message": " "
+            "message": ""
         }
 
         if not request.user.is_authenticated:
@@ -31,13 +35,39 @@ class AccessTokenView(View):
             access_token = exchange_response["access_token"]
             item_id = exchange_response["item_id"]
 
+            if Item.objects.filter(access_token=access_token).exists():
+                response["message"] = "item already linked to this app"
+                return JsonResponse(response)
+
+            new_item = Item(access_token=access_token,
+                            item_id=item_id, user=request.user)
+
             # save access_token and item_id in db
+            new_item.save()
 
-            #async jobs
-            # 1. get items accounts
+            # async jobs to celery
+            # get items accounts
+            get_accounts.delay(access_token)
 
+            response["message"] = "successfully fetched access_token"
+            return JsonResponse(response, status=200)
         except plaid.ApiException as e:
             responseBody = json.loads(e.body)
             response["message"] = responseBody["error_message"]
             response["status_code"] = e.status
             return JsonResponse(response, status=e.status)
+        except Exception as e:
+            print(e)
+            return JsonResponse(internalservererror_response(), status=500)
+
+
+class TransactionsView(View):
+    def post(self, request: HttpRequest):
+        pass
+
+
+class WebHookView(View):
+    # in this app, this webhooks only handles the transaction updates webhooks
+    def post(self, request: HttpRequest):
+        print(response)
+        return HttpRequest("have a good day")
