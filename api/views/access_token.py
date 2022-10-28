@@ -35,7 +35,6 @@ class AccessTokenView(View):
 
             #async jobs
             # 1. get items accounts
-            # 2. 
 
         except plaid.ApiException as e:
             responseBody = json.loads(e.body)
