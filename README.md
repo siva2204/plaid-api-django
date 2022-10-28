@@ -48,6 +48,8 @@
 
     - run `ngrok http 8000`
     
+## Postman Collection
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/4084f8a5cae2915d9724)
 
 ## Models
 
