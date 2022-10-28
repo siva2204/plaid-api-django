@@ -20,7 +20,8 @@ class LoginView(View):
         username = request.POST["username"]
         password = request.POST["password"]
 
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(username=username, password=password)
+        print(user)
 
         if user is None:
             response["status_code"] = 401
@@ -62,8 +63,15 @@ class SignUpView(View):
             response["status_code"] = 409
             return JsonResponse(response, status=409)
 
+        if User.objects.filter(username=username).exists():
+            response["message"] = "user name already used"
+            response["status_code"] = 409
+            return JsonResponse(response, status=409)
+
         newuser = User.objects.create(
-            username=username, email=email, password=password)
+            username=username, email=email)
+
+        newuser.set_password(password)
 
         try:
             newuser.save()
