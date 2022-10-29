@@ -60,7 +60,7 @@
 - Account - Transactions  -> 1 - many relations
 
 ## Celery tasks
- - get_accounts: fetches accounts associated with Item and adds it to the database
+ - update_accounts: fetches accounts associated with Item and upsert it to the database
   
  - sync_transactions: fetches transactions related to Item from `transactions/sync` route and updates the data in database(started on webhooks fire)
 

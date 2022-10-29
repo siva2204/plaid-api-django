@@ -3,6 +3,7 @@ from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from api.models import Account, Item, Transactions
 from ..plaid_client import plaid_client as client
 from ..logger import log
+from django.db import transaction as atomic_transaction
 
 
 def get_transactions_updates(item_id, initial_update_complete):
@@ -67,18 +68,20 @@ def update_transactions(item_id, initial_update_complete):
     access_token = response[3]
     cursor = response[4]
 
-    already_added_tn = _create_transactions(added)
-    log.debug("successful tn creation")
+    with atomic_transaction.atomic():  # starting transaction here
+        already_added_tn = _create_transactions(added)
+        log.debug("successful tn creation")
 
-    modified.extend(already_added_tn)
-    _delete_transactions(removed)
-    log.debug("successful tn deletion")
+        modified.extend(already_added_tn)
+        _delete_transactions(removed)
+        log.debug("successful tn deletion")
 
-    _update_transactions(modified)
-    log.debug("successful tn updation")
+        _update_transactions(modified)
+        log.debug("successful tn updation")
 
-    _update_cursor(access_token=access_token, cursor=cursor)
-    log.debug("cursor updated")
+        _update_cursor(access_token=access_token, cursor=cursor)
+        log.debug("cursor updated")
+    raise Exception("update_transactions rolled back, did not commit")
 
 
 def _update_cursor(access_token, cursor):
