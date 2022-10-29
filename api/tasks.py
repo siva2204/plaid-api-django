@@ -24,11 +24,10 @@ def update_accounts(access_token):
 
         for account in accounts:
 
-            saved_account = Account.objects.get(
-                account_id=account["account_id"])
-
-            if saved_account != None:
-                # account is already present in db
+            # if account already exists
+            if Account.objects.filter(account_id=account["account_id"]).exists():
+                saved_account = Account.objects.get(
+                    account_id=account["account_id"])
                 saved_account.name = account["name"]
                 saved_account.official_name = account["official_name"]
                 saved_account.subtype = account["subtype"]
@@ -51,9 +50,9 @@ def update_accounts(access_token):
     except plaid.ApiException as e:
         responseBody = json.loads(e.body)
         log.error(
-            f"get_accounts task failed {responseBody['error_message']} ", e)
+            f"update_accounts task failed {responseBody['error_message']} ", e)
     except Exception as e:
-        log.error(f"get_accounts task failed to save data in database: ", e)
+        log.error(f"update_accounts task failed to save data in database: ", e)
 
 
 @shared_task

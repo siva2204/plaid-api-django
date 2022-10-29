@@ -81,7 +81,6 @@ def update_transactions(item_id, initial_update_complete):
 
         _update_cursor(access_token=access_token, cursor=cursor)
         log.debug("cursor updated")
-    raise Exception("update_transactions rolled back, did not commit")
 
 
 def _update_cursor(access_token, cursor):
