@@ -25,6 +25,10 @@ SECRET_KEY = "django-insecure-5(4uvkm^d8%rzmvwmc$r#wk0=sq&yjv*60cnz#-=v41iydvo!q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Plaid Creds
+PLAID_CLIENT_ID = "635b53e28e27a300134ff3c8"  # change client id
+PLAID_SECRET = "c2fe779b96bb318c4d3c051114c494"  # change secret
+
 ALLOWED_HOSTS = ["*"]
 
 AUTHENTICATION_BACKENDS = (
@@ -83,8 +87,8 @@ DATABASES = {
         "ENGINE": "django.db.backends.mysql",
         "NAME": "plaid_assignment",
         "USER": "root",
-        "PASSWORD": "Sivaraman^2001",
-        "HOST": "localhost",
+        "PASSWORD": "password",  # change password
+        "HOST": "localhost",  # change host
         "PORT": "3306"
     }
 }

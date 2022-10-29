@@ -1,5 +1,6 @@
 import plaid
 from plaid.api import plaid_api
+from core.settings import PLAID_CLIENT_ID, PLAID_SECRET
 
 # Available environments are
 # 'Production'
@@ -8,8 +9,8 @@ from plaid.api import plaid_api
 configuration = plaid.Configuration(
     host=plaid.Environment.Sandbox,
     api_key={
-        'clientId': "635b53e28e27a300134ff3c8",
-        'secret': "c2fe779b96bb318c4d3c051114c494",
+        'clientId': PLAID_CLIENT_ID,
+        'secret': PLAID_SECRET,
     }
 )
 

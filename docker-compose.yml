@@ -1,0 +1,33 @@
+version: '3'
+services:
+  db:
+    image: mysql:8
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE='plaid_assignment'
+      - MYSQL_USER='root'
+      - MYSQL_PASSWORD='password'
+      - MYSQL_ROOT_PASSWORD='password'
+      - MYSQL_HOST=''
+    volumes:
+      - /tmp/app/mysqld:/var/run/mysqld
+      - ./db:/var/lib/mysql
+
+  redis:
+    image: redis:alpine
+    container_name: dauth_redis
+    restart: always
+    volumes: 
+      - ./redis-volume:/data
+
+  web:
+    build: .
+    command: python manage.py migrate && python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /tmp/app/mysqld:/run/mysqld
+    depends_on:
+      - db
