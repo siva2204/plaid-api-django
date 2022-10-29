@@ -7,7 +7,7 @@ from api.models import Account, Item
 from .plaid_client import plaid_client as client
 from plaid.model import accounts_get_request
 import plaid
-from logger import log
+from .logger import log
 
 
 @shared_task
